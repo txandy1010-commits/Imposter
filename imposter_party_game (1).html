@@ -1,0 +1,1978 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>IMPOSTER - Ultimate Party Game</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        neon: {
+                            cyan: '#00f3ff',
+                            magenta: '#ff0055',
+                            purple: '#8a2be2',
+                            green: '#00ff66',
+                            yellow: '#ffcc00',
+                            dark: '#07070e',
+                            card: '#121225',
+                            border: '#2a2a4a'
+                        }
+                    },
+                    boxShadow: {
+                        'neon-cyan': '0 0 20px rgba(0, 243, 255, 0.4)',
+                        'neon-magenta': '0 0 20px rgba(255, 0, 85, 0.4)',
+                        'neon-purple': '0 0 20px rgba(138, 43, 226, 0.4)',
+                        'neon-green': '0 0 20px rgba(0, 255, 102, 0.4)',
+                        'neon-home': '0 0 25px rgba(0, 243, 255, 0.6)'
+                    },
+                    animation: {
+                        'pulse-glow': 'pulseGlow 2s infinite alternate',
+                        'float': 'float 3s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        pulseGlow: {
+                            '0%': { boxShadow: '0 0 10px rgba(0,243,255,0.3)' },
+                            '100%': { boxShadow: '0 0 30px rgba(0,243,255,0.9)' }
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-6px)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- PeerJS for Multi-Device P2P Networking -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #07070e;
+            color: #f1f5f9;
+            overflow-x: hidden;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #07070e; }
+        ::-webkit-scrollbar-thumb { background: #2a2a4a; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #00f3ff; }
+
+        /* Glassmorphism Cards & Panels */
+        .glass-panel {
+            background: rgba(18, 18, 37, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glass-card {
+            background: rgba(26, 26, 50, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .neon-text-cyan { text-shadow: 0 0 12px rgba(0, 243, 255, 0.7); }
+        .neon-text-magenta { text-shadow: 0 0 12px rgba(255, 0, 85, 0.7); }
+        .neon-text-purple { text-shadow: 0 0 12px rgba(138, 43, 226, 0.7); }
+        .neon-text-green { text-shadow: 0 0 12px rgba(0, 255, 102, 0.7); }
+
+        /* Prominent Home Button Style */
+        .btn-go-home {
+            background: linear-gradient(135deg, #00f3ff 0%, #8a2be2 50%, #ff0055 100%);
+            border: 2px solid #ffffff;
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.6);
+            transition: all 0.3s ease;
+        }
+        .btn-go-home:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 0 30px rgba(255, 0, 85, 0.8);
+        }
+        .btn-go-home:active {
+            transform: translateY(1px) scale(0.98);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between antialiased selection:bg-neon-magenta selection:text-white">
+
+    <!-- Top Navigation Header -->
+    <header class="w-full glass-panel sticky top-0 z-40 border-b border-white/10 px-4 py-3 flex justify-between items-center">
+        <div class="flex items-center space-x-2 cursor-pointer" onclick="game.navHome()">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-neon-magenta via-neon-purple to-neon-cyan flex items-center justify-center font-black text-xl shadow-neon-magenta">
+                <i class="fa-solid font-black text-white text-base">?</i>
+            </div>
+            <div class="flex flex-col">
+                <span class="font-extrabold text-xl tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-neon-cyan via-white to-neon-magenta leading-none">
+                    IMPOSTER
+                </span>
+                <span id="multiDeviceBadgeHeader" class="text-[9px] font-bold tracking-widest text-neon-cyan hidden uppercase">Multi-Device Room</span>
+            </div>
+        </div>
+        
+        <div class="flex items-center space-x-2">
+            <!-- Mute Audio Toggle -->
+            <button onclick="sound.toggleMute()" id="soundToggleBtn" class="p-2.5 rounded-xl glass-card hover:bg-white/10 text-slate-300 hover:text-white transition">
+                <i class="fa-solid fa-volume-high text-lg"></i>
+            </button>
+            <!-- Word Bank Modal Trigger -->
+            <button onclick="game.openCategoryModal()" class="p-2.5 rounded-xl glass-card hover:bg-white/10 text-slate-300 hover:text-white transition flex items-center gap-1.5 px-3.5 text-xs font-semibold border border-neon-cyan/30">
+                <i class="fa-solid fa-book-bookmark text-neon-cyan"></i>
+                <span class="hidden sm:inline">Word Bank</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="container mx-auto max-w-2xl px-4 py-6 flex-grow flex flex-col justify-center">
+
+        <!-- ================= SCREEN 1: GAME SETUP ================= -->
+        <section id="screenSetup" class="space-y-6 animate-fade-in">
+            <!-- Hero Title Banner -->
+            <div class="text-center space-y-2 my-1">
+                <h1 class="text-4xl sm:text-5xl font-black tracking-tight text-white uppercase">
+                    Who is the <span class="text-neon-magenta neon-text-magenta">Imposter?</span>
+                </h1>
+                <p class="text-slate-400 text-xs sm:text-sm max-w-md mx-auto">
+                    Pass the device or sync multiple iPads! Give 1-word broad clues, vote out suspects, and catch the imposter!
+                </p>
+            </div>
+
+            <!-- Play Mode Selector (Single Device vs Multi-iPad P2P) -->
+            <div class="glass-panel p-4 rounded-2xl space-y-3 border-l-4 border-l-neon-cyan">
+                <label class="text-xs font-black uppercase text-slate-300 tracking-wider flex items-center justify-between">
+                    <span><i class="fa-solid fa-wifi text-neon-cyan mr-1.5"></i> Game Hardware Mode</span>
+                    <span id="networkStatusTag" class="text-[10px] text-slate-400 font-mono">Offline / Local Mode</span>
+                </label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="game.setPlayHardwareMode('single')" id="playModeBtnSingle" class="p-3 rounded-xl border border-neon-cyan bg-neon-cyan/10 text-xs font-bold text-white text-center transition">
+                        <i class="fa-solid fa-mobile-screen-button text-neon-cyan text-base block mb-1"></i>
+                        Single Device
+                        <span class="block text-[10px] font-normal text-slate-400">Pass 1 iPad around</span>
+                    </button>
+                    <button onclick="game.setPlayHardwareMode('multi')" id="playModeBtnMulti" class="p-3 rounded-xl border border-slate-700 bg-black/30 text-xs font-bold text-slate-400 text-center transition hover:border-slate-500">
+                        <i class="fa-solid fa-tablet-button text-neon-purple text-base block mb-1"></i>
+                        Multi-Device WiFi
+                        <span class="block text-[10px] font-normal text-slate-400">Sync multiple devices</span>
+                    </button>
+                </div>
+
+                <!-- Multi-Device Connection Controls -->
+                <div id="multiDeviceControls" class="hidden pt-2 border-t border-slate-800/80 space-y-3">
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="game.createMultiDeviceRoom()" class="py-2.5 px-3 rounded-xl bg-neon-purple hover:bg-purple-600 text-white font-bold text-xs transition shadow-neon-purple/30 flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-plus-circle"></i> Create Room (Host)
+                        </button>
+                        <div class="flex gap-1.5">
+                            <input type="text" id="joinRoomInput" placeholder="5-Letter Code" uppercase maxlength="5"
+                                class="w-full bg-black/50 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-white uppercase focus:outline-none focus:border-neon-cyan">
+                            <button onclick="game.joinMultiDeviceRoom()" class="py-2 px-3 rounded-xl bg-neon-cyan text-slate-950 font-bold text-xs hover:bg-cyan-300 transition">
+                                Join
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Room Code Banner & Sync Status -->
+                    <div id="roomCodeDisplayContainer" class="hidden p-3 rounded-xl bg-black/60 border border-neon-cyan/40 text-center space-y-1">
+                        <span id="roomRoleBadge" class="text-[10px] font-bold text-neon-cyan uppercase tracking-widest block">ROOM HOST</span>
+                        <div class="flex items-center justify-center gap-2">
+                            <span class="text-xs text-slate-400">Room Code:</span>
+                            <span id="activeRoomCode" class="text-2xl font-black text-neon-cyan font-mono tracking-widest">-----</span>
+                        </div>
+                        <p id="roomCodeInstructions" class="text-[10px] text-slate-400">Other devices type this code in "Join" to connect!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Players Setup Panel -->
+            <div class="glass-panel p-5 rounded-2xl space-y-4 border-l-4 border-l-neon-magenta shadow-lg">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                        <i class="fa-solid fa-users text-neon-magenta"></i> 
+                        <span id="playerCardTitle">Players</span>
+                        <span id="playerCountBadge" class="bg-neon-magenta/20 text-neon-magenta text-xs font-black px-2.5 py-0.5 rounded-full border border-neon-magenta/30">0</span>
+                    </h2>
+                    <button onclick="game.quickAddPlayers()" class="text-xs text-slate-400 hover:text-neon-cyan transition flex items-center gap-1">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Preset (6)
+                    </button>
+                </div>
+
+                <!-- Input Player Name for this Device -->
+                <div class="space-y-1">
+                    <label id="playerNameInputLabel" class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Add Players on this Device</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="playerNameInput" placeholder="Enter player name..." 
+                            class="flex-1 bg-black/40 border border-slate-700/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-neon-magenta transition placeholder-slate-500"
+                            onkeydown="if(event.key==='Enter') game.addLocalPlayer()">
+                        <button onclick="game.addLocalPlayer()" class="bg-neon-magenta hover:bg-rose-500 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition flex items-center gap-1 shadow-neon-magenta">
+                            <i class="fa-solid fa-plus"></i> Add
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Local Device Players Chips List -->
+                <div id="playerList" class="flex flex-wrap gap-2 max-h-32 overflow-y-auto pr-1 py-1">
+                    <!-- Populated by JS -->
+                </div>
+
+                <!-- Live Multi-Device Combined Lobby Roster -->
+                <div id="multiDeviceLobbyRoster" class="hidden pt-3 border-t border-slate-800 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-black uppercase text-neon-cyan tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-network-wired"></i> Full Room Roster Across Devices
+                        </span>
+                        <span id="totalRoomPlayerCount" class="text-xs font-bold text-neon-cyan">0 Players Total</span>
+                    </div>
+                    <div id="lobbyDevicesList" class="space-y-1.5 text-xs">
+                        <!-- Populated dynamically by Host state sync -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Options Grid (Host editable) -->
+            <div id="hostOnlyOptionsContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                <!-- Imposters Count -->
+                <div class="glass-panel p-4 rounded-2xl space-y-3 border-l-4 border-l-neon-purple">
+                    <div class="flex justify-between items-center">
+                        <label class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                            <i class="fa-solid fa-user-ninja text-neon-purple"></i> Imposter Count
+                        </label>
+                        <span id="imposterCountText" class="text-neon-purple font-black text-xl">1</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button onclick="game.adjustImposters(-1)" class="w-10 h-10 rounded-xl glass-card hover:bg-white/10 flex items-center justify-center font-bold text-lg active:scale-95 transition">-</button>
+                        <input type="range" id="imposterSlider" min="1" max="5" value="1" oninput="game.updateImposterSlider(this.value)" class="w-full accent-neon-purple bg-slate-800 rounded-lg cursor-pointer">
+                        <button onclick="game.adjustImposters(1)" class="w-10 h-10 rounded-xl glass-card hover:bg-white/10 flex items-center justify-center font-bold text-lg active:scale-95 transition">+</button>
+                    </div>
+                </div>
+
+                <!-- Automatic Discussion Timer Limit -->
+                <div class="glass-panel p-4 rounded-2xl space-y-3 border-l-4 border-l-neon-green">
+                    <div class="flex justify-between items-center">
+                        <label class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                            <i class="fa-solid fa-stopwatch text-neon-green"></i> Discussion Timer
+                        </label>
+                        <span id="timerText" class="text-neon-green font-black text-xl">3m</span>
+                    </div>
+                    <select id="timerSelect" onchange="game.updateTimerSetting(this.value)" class="w-full bg-black/40 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-neon-green cursor-pointer">
+                        <option value="120">2 Minutes (Auto-Vote)</option>
+                        <option value="180" selected>3 Minutes (Auto-Vote)</option>
+                        <option value="300">5 Minutes (Auto-Vote)</option>
+                        <option value="0">No Timer (Manual Transition)</option>
+                    </select>
+                </div>
+
+            </div>
+
+            <!-- Mode & Feature Toggles -->
+            <div id="gameSettingsTogglesPanel" class="glass-panel p-5 rounded-2xl space-y-4 border-l-4 border-l-neon-yellow">
+                <!-- Imposter Word Guess "Steal the Win" Feature Toggle -->
+                <div class="flex items-center justify-between p-3 glass-card rounded-xl border border-slate-700">
+                    <div>
+                        <span class="text-xs font-extrabold text-white flex items-center gap-1.5">
+                            <i class="fa-solid fa-key text-neon-yellow"></i> Imposter Word Guess Mode
+                        </span>
+                        <p class="text-[11px] text-slate-400">Caught Imposters get 1 chance to guess secret word to steal the win!</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="imposterGuessToggle" checked onchange="game.toggleImposterGuessMode(this.checked)" class="sr-only peer">
+                        <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-neon-yellow"></div>
+                    </label>
+                </div>
+
+                <!-- Imposter Intelligence Mode -->
+                <div class="space-y-2">
+                    <label class="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-sliders text-neon-yellow"></i> Imposter Variant
+                    </label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="game.setMode('classic')" id="modeBtnClassic" class="mode-btn p-2.5 rounded-xl border border-neon-cyan bg-neon-cyan/10 text-xs font-bold text-white text-center transition">
+                            Classic
+                            <span class="block text-[10px] font-normal text-slate-400 mt-0.5">No Clue</span>
+                        </button>
+                        <button onclick="game.setMode('hint')" id="modeBtnHint" class="mode-btn p-2.5 rounded-xl border border-slate-700 bg-black/30 text-xs font-bold text-slate-400 text-center transition hover:border-slate-500">
+                            Category Hint
+                            <span class="block text-[10px] font-normal text-slate-400 mt-0.5">Gets Category</span>
+                        </button>
+                        <button onclick="game.setMode('chaos')" id="modeBtnChaos" class="mode-btn p-2.5 rounded-xl border border-slate-700 bg-black/30 text-xs font-bold text-slate-400 text-center transition hover:border-slate-500">
+                            Chaos Variant
+                            <span class="block text-[10px] font-normal text-slate-400 mt-0.5">Slightly Diff Word</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Category Selector -->
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-layer-group text-neon-yellow"></i> Choose Category
+                        </label>
+                        <button onclick="game.openCategoryModal()" class="text-xs text-neon-cyan hover:underline">
+                            + Add Custom Words
+                        </button>
+                    </div>
+                    <select id="categorySelect" class="w-full bg-black/40 border border-slate-700/80 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-neon-yellow font-medium cursor-pointer">
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+            </div>
+
+            <!-- HOST START GAME BUTTON vs CLIENT WAITING BANNER -->
+            <div id="hostStartButtonContainer">
+                <button onclick="game.startGame()" class="w-full py-4 rounded-2xl bg-gradient-to-r from-neon-cyan via-neon-purple to-neon-magenta text-slate-950 font-black text-xl uppercase tracking-widest shadow-lg shadow-neon-purple/40 hover:opacity-95 active:scale-[0.99] transition transform">
+                    <i class="fa-solid fa-play mr-2"></i> Start Game
+                </button>
+            </div>
+
+            <div id="clientWaitingContainer" class="hidden p-6 rounded-2xl glass-panel border border-neon-cyan/40 text-center space-y-3">
+                <div class="w-12 h-12 mx-auto rounded-full bg-neon-cyan/20 border border-neon-cyan flex items-center justify-center text-neon-cyan text-xl animate-spin">
+                    <i class="fa-solid fa-spinner"></i>
+                </div>
+                <h3 class="text-lg font-black text-white">Connected to Lobby!</h3>
+                <p class="text-xs text-slate-300">
+                    Waiting for the Host device to select settings and start the game...
+                </p>
+            </div>
+        </section>
+
+        <!-- ================= SCREEN 2: PASS DEVICE COVER SCREEN ================= -->
+        <section id="screenPassCover" class="hidden space-y-6 text-center animate-fade-in">
+            <div class="glass-panel p-8 rounded-3xl space-y-6 border border-neon-cyan/40 shadow-neon-cyan/20">
+                <div class="w-20 h-20 mx-auto rounded-full bg-neon-cyan/10 border-2 border-neon-cyan flex items-center justify-center text-neon-cyan text-3xl animate-pulse">
+                    <i class="fa-solid fa-mobile-screen-button"></i>
+                </div>
+
+                <div class="space-y-2">
+                    <p class="text-xs uppercase font-extrabold tracking-widest text-slate-400">Pass Device To</p>
+                    <h2 id="passTargetPlayerName" class="text-4xl font-black text-neon-cyan neon-text-cyan">
+                        Player Name
+                    </h2>
+                    <p class="text-xs text-slate-400 max-w-xs mx-auto">
+                        Ensure no one else is looking at your screen before tapping reveal!
+                    </p>
+                </div>
+
+                <button onclick="game.revealRoleForCurrentPlayer()" class="w-full py-4 rounded-xl bg-neon-cyan text-slate-950 font-black text-lg uppercase tracking-wider shadow-neon-cyan hover:bg-cyan-300 transition">
+                    <i class="fa-solid fa-eye mr-2"></i> I Am Ready (Reveal Role)
+                </button>
+
+                <div class="text-xs text-slate-500 font-mono">
+                    PLAYER <span id="passCoverIndex">1</span> OF <span id="passCoverTotal">4</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= SCREEN 3: SECRET ROLE DISPLAY SCREEN ================= -->
+        <section id="screenRoleDisplay" class="hidden space-y-6 text-center animate-fade-in">
+            <div id="roleCardContainer" class="glass-panel p-8 rounded-3xl space-y-6 border-2 border-neon-magenta shadow-neon-magenta/30 bg-gradient-to-b from-neon-card to-black">
+                
+                <div id="roleDisplayIcon" class="w-20 h-20 mx-auto rounded-full bg-neon-magenta/20 border border-neon-magenta/40 flex items-center justify-center text-neon-magenta text-3xl">
+                    <i class="fa-solid fa-user-ninja"></i>
+                </div>
+
+                <div id="roleDisplayContent" class="space-y-3">
+                    <!-- Injected by JS -->
+                </div>
+
+                <p class="text-xs text-slate-400 italic">Memorize your role/word, then tap Hide & Continue!</p>
+            </div>
+
+            <!-- Hide & Pass/Continue Button -->
+            <button onclick="game.hideAndPassToNext()" class="w-full py-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-base transition border border-slate-600 flex items-center justify-center gap-2 shadow-lg">
+                <i class="fa-solid fa-user-lock"></i>
+                <span id="hideAndPassBtnText">Hide & Pass Device</span>
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </section>
+
+        <!-- ================= SCREEN 4: AUTOMATIC GENERAL DISCUSSION ================= -->
+        <section id="screenDiscussion" class="hidden space-y-6 text-center animate-fade-in">
+            <!-- Timer Display Ring -->
+            <div class="glass-panel p-6 rounded-3xl flex flex-col items-center justify-center space-y-4 border border-neon-purple/40 shadow-neon-purple/20">
+                <div class="relative w-48 h-48 flex items-center justify-center">
+                    <!-- SVG Progress Ring -->
+                    <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="8" class="text-slate-800" fill="transparent" />
+                        <circle id="timerRing" cx="50" cy="50" r="42" stroke="currentColor" stroke-width="8" class="text-neon-cyan transition-all duration-1000" fill="transparent" stroke-dasharray="263.89" stroke-dashoffset="0" stroke-linecap="round" />
+                    </svg>
+                    <div class="absolute flex flex-col items-center">
+                        <span id="timerDisplay" class="text-4xl font-black tracking-tight text-white font-mono">03:00</span>
+                        <span class="text-[10px] uppercase tracking-widest text-slate-400 font-bold">General Discussion</span>
+                    </div>
+                </div>
+
+                <p id="autoDiscussionNotice" class="text-xs text-neon-cyan font-semibold flex items-center gap-1.5 animate-pulse">
+                    <i class="fa-solid fa-arrows-spin"></i> Automatic Discussion Active — Will Auto-Proceed to Voting!
+                </p>
+
+                <div class="flex items-center gap-3">
+                    <button onclick="game.toggleTimerPause()" id="pauseTimerBtn" class="px-4 py-2 rounded-xl glass-card hover:bg-white/10 text-xs font-bold text-slate-200 border border-slate-700 flex items-center gap-1.5">
+                        <i class="fa-solid fa-pause"></i> Pause
+                    </button>
+                    <button onclick="game.addTimerSeconds(30)" class="px-4 py-2 rounded-xl glass-card hover:bg-white/10 text-xs font-bold text-slate-200 border border-slate-700 flex items-center gap-1.5">
+                        <i class="fa-solid fa-plus"></i> +30s
+                    </button>
+                </div>
+            </div>
+
+            <!-- BROAD 1-WORD CLUE ASSISTANT -->
+            <div class="glass-panel p-5 rounded-2xl border-l-4 border-l-neon-green text-left space-y-3">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-black uppercase text-neon-green tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-lightbulb"></i> Broad 1-Word Clue Assistant
+                    </span>
+                    <button onclick="game.generateBroadClueIdea()" class="text-xs text-slate-400 hover:text-white transition flex items-center gap-1">
+                        <i class="fa-solid fa-rotate"></i> New Prompt
+                    </button>
+                </div>
+                
+                <p class="text-xs text-slate-300 font-medium leading-relaxed">
+                    <strong class="text-neon-yellow">Rule:</strong> Take turns around the group giving <span class="underline underline-offset-2 decoration-neon-green font-bold text-white">EXACTLY ONE BROAD WORD</span> clue! Make it subtle!
+                </p>
+
+                <div class="p-3 bg-black/40 rounded-xl border border-slate-800 space-y-1">
+                    <span class="text-[10px] uppercase font-bold text-slate-400 block">Suggested Broad Clue Angle:</span>
+                    <p id="broadClueIdeaText" class="text-sm font-semibold text-slate-100 italic">
+                        "Describe its texture using 1 word (e.g. Soft, Metallic, Smooth)"
+                    </p>
+                </div>
+            </div>
+
+            <!-- Action Button to Skip directly to voting -->
+            <button onclick="game.proceedToVoting()" class="w-full py-4 rounded-2xl bg-neon-magenta hover:bg-rose-600 text-white font-black text-lg transition shadow-neon-magenta flex items-center justify-center gap-2 uppercase tracking-wider">
+                <i class="fa-solid fa-check-to-slot"></i>
+                <span>Skip Timer & Proceed to Voting</span>
+            </button>
+        </section>
+
+        <!-- ================= SCREEN 5: ANONYMOUS VOTE - PASS COVER ================= -->
+        <section id="screenAnonVotePassCover" class="hidden space-y-6 text-center animate-fade-in">
+            <div class="glass-panel p-8 rounded-3xl space-y-6 border border-neon-green/40 shadow-neon-green/20">
+                <div class="w-20 h-20 mx-auto rounded-full bg-neon-green/10 border-2 border-neon-green flex items-center justify-center text-neon-green text-3xl animate-bounce">
+                    <i class="fa-solid fa-user-secret"></i>
+                </div>
+
+                <div class="space-y-2">
+                    <p class="text-xs uppercase font-extrabold tracking-widest text-slate-400">Anonymous Pass & Vote</p>
+                    <p class="text-xs text-slate-400">Hand device to voter:</p>
+                    <h2 id="anonVoterName" class="text-4xl font-black text-neon-green neon-text-green">
+                        Voter Name
+                    </h2>
+                </div>
+
+                <button onclick="game.startAnonVoteForCurrentPlayer()" class="w-full py-4 rounded-xl bg-neon-green text-slate-950 font-black text-lg uppercase tracking-wider hover:bg-emerald-300 transition shadow-lg">
+                    <i class="fa-solid fa-check-to-slot mr-2"></i> Open Secret Ballot
+                </button>
+
+                <div class="text-xs text-slate-500 font-mono">
+                    VOTER <span id="anonVoterIndex">1</span> OF <span id="anonVoterTotal">4</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= SCREEN 6: ANONYMOUS BALLOT SELECTION ================= -->
+        <section id="screenAnonBallot" class="hidden space-y-6 animate-fade-in">
+            <div class="text-center space-y-1">
+                <span id="ballotVoterBadge" class="text-xs font-bold uppercase text-neon-green tracking-widest bg-neon-green/10 px-3 py-1 rounded-full border border-neon-green/30">
+                    Ballot for Player
+                </span>
+                <h2 class="text-2xl sm:text-3xl font-black text-white mt-2">Secretly Select Suspect</h2>
+                <p class="text-xs text-slate-400">Your selection is completely confidential!</p>
+            </div>
+
+            <!-- Ballot Player Choices -->
+            <div id="anonBallotGrid" class="grid grid-cols-1 gap-2.5">
+                <!-- Injected by JS -->
+            </div>
+
+            <button onclick="game.confirmAnonVote()" id="confirmVoteBtn" disabled class="w-full py-4 rounded-xl bg-slate-800 text-slate-500 font-black text-base uppercase tracking-wider transition border border-slate-700 cursor-not-allowed">
+                Cast Secret Vote
+            </button>
+        </section>
+
+        <!-- ================= SCREEN 7: REVEAL & GAME RESULTS ================= -->
+        <section id="screenResults" class="hidden space-y-6 text-center animate-fade-in">
+            <!-- Victory Header Banner -->
+            <div class="glass-panel p-6 rounded-3xl border-t-4 border-t-neon-cyan space-y-3">
+                <div id="resultBadge" class="inline-block px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/40">
+                    Innocents Win!
+                </div>
+                <h2 id="resultTitle" class="text-3xl sm:text-4xl font-black text-white">
+                    The Impostors Were Caught!
+                </h2>
+                
+                <div class="py-3 px-4 glass-card rounded-2xl border border-white/10 inline-block my-2">
+                    <span class="text-xs uppercase text-slate-400 font-bold block mb-1">Secret Word Was:</span>
+                    <span id="secretWordResult" class="text-2xl sm:text-3xl font-black text-neon-yellow tracking-wide">
+                        PIZZA
+                    </span>
+                    <span id="categoryResult" class="block text-xs text-slate-400 mt-1">Category: Foods & Dishes</span>
+                </div>
+            </div>
+
+            <!-- Imposters Identity Card -->
+            <div class="glass-panel p-5 rounded-2xl text-left space-y-3">
+                <h3 class="text-xs font-black uppercase text-neon-magenta tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-user-ninja"></i> The Imposter(s)
+                </h3>
+                <div id="impostersListResult" class="space-y-2">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Vote Tally Results -->
+            <div id="voteTallyCard" class="glass-panel p-5 rounded-2xl text-left space-y-3 hidden">
+                <h3 class="text-xs font-black uppercase text-neon-green tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-square-poll-vertical"></i> Final Vote Breakdown
+                </h3>
+                <div id="voteTallyList" class="space-y-2 text-sm">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Full Player Roster Breakdown -->
+            <div class="glass-panel p-5 rounded-2xl text-left space-y-3">
+                <h3 class="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-id-card"></i> Player Roles & Status
+                </h3>
+                <div id="allPlayersResult" class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Action Buttons with PROMINENT BIG GO BACK TO HOME BUTTON -->
+            <div class="flex flex-col gap-3">
+                <button onclick="game.startGame()" id="playAgainBtn" class="w-full py-4 rounded-2xl bg-neon-cyan text-slate-950 font-black text-lg uppercase tracking-wider shadow-neon-cyan hover:bg-cyan-300 transition">
+                    <i class="fa-solid fa-rotate-right mr-2"></i> Play Again (Same Room)
+                </button>
+                
+                <!-- PROMINENT BIG "GO BACK TO HOME" BUTTON -->
+                <button onclick="game.navHome()" class="btn-go-home w-full py-5 rounded-2xl text-white font-black text-xl uppercase tracking-widest flex items-center justify-center gap-3">
+                    <i class="fa-solid fa-house text-2xl"></i>
+                    <span>Go Back to Home</span>
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ================= MODAL: IMPOSTER WORD GUESS "STEAL THE WIN" ================= -->
+    <div id="imposterGuessModal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-md rounded-3xl p-6 text-center space-y-5 border-2 border-neon-yellow shadow-neon-purple/50 animate-fade-in">
+            <div class="w-20 h-20 mx-auto rounded-full bg-neon-yellow/20 border-2 border-neon-yellow flex items-center justify-center text-neon-yellow text-4xl animate-bounce">
+                <i class="fa-solid fa-key"></i>
+            </div>
+
+            <div class="space-y-2">
+                <span id="guessModalPlayerTag" class="px-3 py-1 rounded-full bg-neon-magenta/20 text-neon-magenta font-black text-xs uppercase tracking-widest border border-neon-magenta/40">
+                    Caught Imposter
+                </span>
+                <h3 class="text-2xl font-black text-white">Steal the Win!</h3>
+                <p class="text-xs text-slate-300">
+                    You were voted out! Enter your guess for the secret category word below. If correct, <strong>IMPOSTERS INSTANTLY WIN!</strong>
+                </p>
+            </div>
+
+            <div class="space-y-3">
+                <input type="text" id="imposterGuessInput" placeholder="Type secret word guess..." 
+                    class="w-full bg-black/60 border-2 border-neon-yellow rounded-xl px-4 py-3 text-center text-lg font-black text-white focus:outline-none placeholder-slate-600">
+                
+                <button onclick="game.submitImposterGuess()" class="w-full py-4 rounded-xl bg-neon-yellow text-slate-950 font-black text-base uppercase tracking-wider hover:bg-yellow-300 transition shadow-lg">
+                    Submit Word Guess
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: WARNING / VALIDATION -->
+    <div id="warningModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-sm rounded-3xl p-6 text-center space-y-4 border border-rose-500/50 shadow-neon-magenta/40">
+            <div class="w-16 h-16 mx-auto rounded-full bg-rose-500/20 border border-rose-500/50 flex items-center justify-center text-rose-500 text-3xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 id="warningModalTitle" class="text-xl font-black text-white">Notice</h3>
+            <p id="warningModalText" class="text-sm text-slate-300">
+                A minimum of 3 players is required to start the game!
+            </p>
+            <button onclick="game.closeWarningModal()" class="w-full py-3 rounded-xl bg-rose-600 text-white font-bold text-sm hover:bg-rose-500 transition">
+                Got It
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL: WORD BANK / CUSTOM WORDS EDITOR -->
+    <div id="categoryModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-xl rounded-3xl p-6 space-y-5 border border-slate-700 max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-4">
+                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-book-bookmark text-neon-cyan"></i> Word Bank Editor
+                </h3>
+                <button onclick="game.closeCategoryModal()" class="text-slate-400 hover:text-white p-2 text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="overflow-y-auto space-y-4 pr-1 flex-1">
+                <!-- Select Category -->
+                <div class="space-y-2">
+                    <label class="text-xs font-bold text-slate-300 uppercase">Select Category to View / Edit</label>
+                    <select id="modalCategorySelect" onchange="game.loadModalCategoryWords()" class="w-full bg-black/40 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-neon-cyan">
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+
+                <div class="flex justify-between items-center text-xs text-slate-400">
+                    <span>Total words in category: <strong id="modalWordCount" class="text-neon-cyan">0</strong></span>
+                    <button onclick="game.resetCategoryToDefault()" class="text-rose-400 hover:underline">Reset Defaults</button>
+                </div>
+
+                <textarea id="modalWordsTextarea" rows="6" placeholder="Enter words separated by commas..." 
+                    class="w-full bg-black/50 border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-neon-cyan font-mono leading-relaxed"></textarea>
+                
+                <button onclick="game.saveModalWords()" class="w-full py-2.5 rounded-xl bg-neon-cyan text-slate-950 font-bold text-sm hover:bg-cyan-300 transition">
+                    <i class="fa-solid fa-floppy-disk mr-1"></i> Save Changes to Category
+                </button>
+
+                <hr class="border-slate-800">
+
+                <div class="space-y-3">
+                    <h4 class="text-sm font-bold text-white flex items-center gap-1.5">
+                        <i class="fa-solid fa-plus text-neon-magenta"></i> Add New Custom Category
+                    </h4>
+                    <input type="text" id="newCategoryName" placeholder="e.g. Inside Jokes, Anime Characters" 
+                        class="w-full bg-black/40 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-neon-magenta">
+                    <textarea id="newCategoryWords" rows="3" placeholder="Add 50+ words separated by commas..." 
+                        class="w-full bg-black/40 border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-neon-magenta font-mono"></textarea>
+                    <button onclick="game.createNewCategory()" class="w-full py-2.5 rounded-xl bg-neon-magenta text-white font-bold text-sm hover:bg-rose-600 transition shadow-neon-magenta">
+                        Create Custom Category
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* WEB AUDIO API SYNTHESIZER FOR SOUND EFFECTS */
+        class SoundSystem {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) this.ctx = new AudioCtx();
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            toggleMute() {
+                this.muted = !this.muted;
+                const btn = document.getElementById('soundToggleBtn');
+                if (btn) {
+                    btn.innerHTML = this.muted ? 
+                        '<i class="fa-solid fa-volume-xmark text-lg text-rose-500"></i>' : 
+                        '<i class="fa-solid fa-volume-high text-lg"></i>';
+                }
+            }
+
+            playBeep(freq = 440, type = 'sine', duration = 0.1, vol = 0.1) {
+                if (this.muted) return;
+                this.init();
+                if (!this.ctx) return;
+
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+
+                    gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch (e) {
+                    console.error("Audio synth error", e);
+                }
+            }
+
+            playClick() { this.playBeep(600, 'sine', 0.05, 0.08); }
+            playFlip() { this.playBeep(300, 'triangle', 0.12, 0.15); }
+            playTimerTick() { this.playBeep(800, 'square', 0.03, 0.03); }
+            playAlarm() {
+                if (this.muted) return;
+                for (let i = 0; i < 3; i++) {
+                    setTimeout(() => this.playBeep(880, 'sawtooth', 0.15, 0.2), i * 180);
+                }
+            }
+            playVictory() {
+                if (this.muted) return;
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((freq, idx) => {
+                    setTimeout(() => this.playBeep(freq, 'sine', 0.25, 0.15), idx * 120);
+                });
+            }
+        }
+
+        const sound = new SoundSystem();
+
+        /* BUILT-IN CATEGORIES WITH 50+ WORDS EACH */
+        const DEFAULT_CATEGORIES = {
+            "Foods & Dishes": [
+                "Pizza", "Sushi", "Hamburger", "Tacos", "Spaghetti", "Ramen", "Pancakes", "Hot Dog", "French Fries", "Fried Chicken",
+                "Lasagna", "Burrito", "Ice Cream", "Donuts", "Cheesecake", "Waffles", "Paella", "Falafel", "Curry", "Pho",
+                "Dim Sum", "Pad Thai", "Shawarma", "Nacho Supreme", "Apple Pie", "Croissant", "Gyoza", "Fish and Chips", "Kebab", "Clam Chowder",
+                "Macaroni Cheese", "Steak", "BBQ Ribs", "Lobster", "Caesar Salad", "Guacamole", "Fondue", "Pretzel", "Churros", "Brownies",
+                "Milkshake", "Tiramisu", "Bao Buns", "Empanadas", "Meatballs", "Risotto", "Samosa", "Crepes", "Omelette", "Eggs Benedict",
+                "Hummus", "Biryani", "Garlic Bread", "Miso Soup", "Baklava", "Gelato", "Boba Tea"
+            ],
+            "Famous Places & Landmarks": [
+                "Eiffel Tower", "Statue of Liberty", "Great Wall of China", "Colosseum", "Taj Mahal", "Pyramids of Giza", "Machu Picchu", "Grand Canyon", "Big Ben", "Sydney Opera House",
+                "Mount Everest", "Niagara Falls", "Times Square", "Golden Gate Bridge", "Christ the Redeemer", "Stonehenge", "Burj Khalifa", "Mount Fuji", "Louvre Museum", "Hollywood Sign",
+                "Leaning Tower of Pisa", "Disneyland", "Easter Island", "Acropolis of Athens", "Santorini", "Versailles", "Banff National Park", "Amazon Rainforest", "Mount Rushmore", "Vatican City",
+                "Sagrada Familia", "Yellowstone", "Mesa Verde", "Tower Bridge", "Central Park", "Trevi Fountain", "Alhambra", "Petra", "Galapagos Islands", "Loch Ness",
+                "Venice Canals", "Forbidden City", "Empire State Building", "Mount Kilimanjaro", "Victoria Falls", "St. Peter's Basilica", "Chichen Itza", "Great Barrier Reef", "Pike Place Market"
+            ],
+            "Movies & TV Shows": [
+                "Harry Potter", "Star Wars", "Avengers", "Titanic", "Jurassic Park", "Stranger Things", "Game of Thrones", "Inception", "The Matrix", "Breaking Bad",
+                "The Lion King", "Spider-Man", "Batman", "Shrek", "Avatar", "Squid Game", "The Office", "Friends", "The Dark Knight", "Frozen",
+                "Interstellar", "Finding Nemo", "Back to the Future", "The Mandalorian", "Pirates of the Caribbean", "Toy Story", "The Witcher", "Wednesday", "Superbad", "Gladiator",
+                "Home Alone", "Ghostbusters", "The Hunger Games", "Mean Girls", "Twilight", "Forrest Gump", "Pulp Fiction", "The Godfather", "Money Heist", "Cobra Kai",
+                "The Simpsons", "SpongeBob SquarePants", "Family Guy", "Rick and Morty", "Better Call Saul", "The Last of Us", "Succession", "Ted Lasso", "Black Mirror", "Doctor Who"
+            ],
+            "Animals & Creatures": [
+                "Lion", "Elephant", "Penguin", "Dolphin", "Kangaroo", "Panda", "Cheetah", "Giraffe", "Gorilla", "Flamingo",
+                "Grizzly Bear", "Octopus", "Sloth", "Koala", "Peacock", "Chameleon", "Bald Eagle", "Tiger", "Platypus", "Zebra",
+                "Hammerhead Shark", "Chimpanzee", "Hippo", "Rhino", "Komodo Dragon", "Polar Bear", "Wolf", "Owl", "Otter", "Capybara",
+                "Walrus", "Axolotl", "Alpaca", "Fox", "Hedgehog", "Red Panda", "Orca", "Crocodile", "Meerkat", "Lemur",
+                "Golden Retriever", "Chihuahua", "Hamster", "Toucan", "Manatee", "Snow Leopard", "Ostrich", "Jellyfish", "Stingray", "Piranha"
+            ],
+            "Objects & Tech Gadgets": [
+                "Smartphone", "Laptop", "Coffee Mug", "Toothbrush", "Sunglasses", "Backpack", "Headphones", "Wristwatch", "Umbrella", "Keyring",
+                "Washing Machine", "Microwave", "Frying Pan", "Toaster", "Vacuum Cleaner", "Sofa", "Bicycle", "Water Bottle", "Scissors", "Flashlight",
+                "Bed Pillow", "Mirror", "Guitar", "Wallet", "Passport", "Screwdriver", "Desk Lamp", "TV Remote", "Alarm Clock", "Sneakers",
+                "Lip Balm", "Computer Mouse", "Keyboard", "Notebook", "Stapler", "Tape Measure", "Candle", "Kettle", "Blender", "Hand Sanitizer",
+                "Thermal Flask", "Power Bank", "Earbuds", "Fountain Pen", "Calculator", "Shower Curtain", "Luggage Suitcase", "Door Mat", "Picture Frame"
+            ]
+        };
+
+        const BROAD_CLUE_IDEAS = [
+            "Describe its texture using 1 word (e.g. Soft, Metallic, Rough, Liquid, Smooth)",
+            "Describe its color or temperature in 1 word (e.g. Red, Warm, Frozen, Shiny)",
+            "Describe its general size in 1 word (e.g. Tiny, Huge, Massive, Compact)",
+            "Describe where it is used in 1 word (e.g. Kitchen, Outdoor, Office, Pocket)",
+            "Describe how it makes you feel in 1 word (e.g. Happy, Energetic, Cozy, Hungry)",
+            "Describe its shape or speed in 1 word (e.g. Round, Fast, Heavy, Sharp)"
+        ];
+
+        class ImposterGame {
+            constructor() {
+                // Local players entered on THIS device
+                this.localPlayers = ["Alex", "Jordan"];
+                
+                // Device hardware mode: 'single' (local pass & play) vs 'multi' (PeerJS multi-iPad)
+                this.playHardwareMode = 'single'; 
+                
+                // Host vs Client
+                this.isHost = true;
+                this.deviceId = "DEV_" + Math.random().toString(36).substring(2, 8).toUpperCase();
+                
+                // Multi-device lobby mapping: deviceId -> { deviceLabel, players: [] }
+                this.lobbyDevices = {};
+                this.lobbyDevices[this.deviceId] = { label: "Device 1 (This Device)", players: [...this.localPlayers] };
+
+                // Flat full roster list created by Host: [{ id, name, deviceId, localIndex, role, eliminated }]
+                this.fullRoomRoster = [];
+
+                // Game Options
+                this.imposterCount = 1;
+                this.mode = 'classic'; // 'classic', 'hint', 'chaos'
+                this.timerDuration = 180;
+                this.timerSecondsLeft = 180;
+                this.timerInterval = null;
+                this.isTimerPaused = false;
+                this.imposterGuessMode = true; // Imposter gets 1 chance to steal the win
+
+                // Word categories
+                this.categories = JSON.parse(localStorage.getItem('imposter_categories')) || DEFAULT_CATEGORIES;
+                this.selectedCategoryKey = Object.keys(this.categories)[0];
+
+                // Active Game Word State
+                this.currentSecretWord = "";
+                this.chaosVariantWord = "";
+                this.imposterIndices = [];
+                this.eliminatedPlayers = new Set();
+
+                // Current client's local player turn index during pass-and-play role reveal / voting
+                this.myAssignedLocalRoleList = []; // [{ localName, globalIndex, isImposter, word }]
+                this.currentPassIndex = 0;
+
+                // Voting State
+                this.currentAnonVoterIndex = 0;
+                this.anonVotes = {}; // globalIndex -> selectedGlobalIndex
+                this.selectedBallotTarget = null;
+
+                // PeerJS Networking
+                this.peer = null;
+                this.roomCode = "";
+                this.connections = {}; // host: connection map deviceId -> conn
+                this.hostConnection = null; // client: conn to host
+
+                this.initUI();
+            }
+
+            initUI() {
+                this.renderPlayerChips();
+                this.populateCategoryDropdown();
+                this.updateImposterSliderLimit();
+            }
+
+            /* --- WARNING MODAL --- */
+            showWarningModal(title, message) {
+                sound.playClick();
+                document.getElementById('warningModalTitle').textContent = title;
+                document.getElementById('warningModalText').textContent = message;
+                document.getElementById('warningModal').classList.remove('hidden');
+            }
+
+            closeWarningModal() {
+                sound.playClick();
+                document.getElementById('warningModal').classList.add('hidden');
+            }
+
+            /* --- HARDWARE & MULTI-IPAD PLAY MODE SWITCHING --- */
+            setPlayHardwareMode(mode) {
+                sound.playClick();
+                this.playHardwareMode = mode;
+                
+                const btnSingle = document.getElementById('playModeBtnSingle');
+                const btnMulti = document.getElementById('playModeBtnMulti');
+                const multiCtrls = document.getElementById('multiDeviceControls');
+                const netStatus = document.getElementById('networkStatusTag');
+                const headerBadge = document.getElementById('multiDeviceBadgeHeader');
+                const titleLabel = document.getElementById('playerCardTitle');
+                const inputLabel = document.getElementById('playerNameInputLabel');
+                const multiRoster = document.getElementById('multiDeviceLobbyRoster');
+
+                if (mode === 'single') {
+                    btnSingle.className = "p-3 rounded-xl border border-neon-cyan bg-neon-cyan/10 text-xs font-bold text-white text-center transition";
+                    btnMulti.className = "p-3 rounded-xl border border-slate-700 bg-black/30 text-xs font-bold text-slate-400 text-center transition hover:border-slate-500";
+                    multiCtrls.classList.add('hidden');
+                    netStatus.textContent = "Offline / Local Mode";
+                    headerBadge.classList.add('hidden');
+                    
+                    // Simple clear labeling for local mode
+                    titleLabel.textContent = "Players";
+                    inputLabel.textContent = "Add Players";
+                    multiRoster.classList.add('hidden');
+
+                    this.isHost = true;
+                    this.updateRoleUI();
+                } else {
+                    btnSingle.className = "p-3 rounded-xl border border-slate-700 bg-black/30 text-xs font-bold text-slate-400 text-center transition hover:border-slate-500";
+                    btnMulti.className = "p-3 rounded-xl border border-neon-purple bg-neon-purple/10 text-xs font-bold text-white text-center transition";
+                    multiCtrls.classList.remove('hidden');
+                    netStatus.textContent = "Multi-Device WiFi";
+                    headerBadge.classList.remove('hidden');
+
+                    titleLabel.textContent = "Players on This iPad";
+                    inputLabel.textContent = "Add Players on this Device";
+                    multiRoster.classList.remove('hidden');
+                }
+            }
+
+            /* --- PEERJS MULTI-DEVICE NETWORKING --- */
+            generate5LetterRoomCode() {
+                const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+                let result = "";
+                for (let i = 0; i < 5; i++) {
+                    result += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                return result;
+            }
+
+            createMultiDeviceRoom() {
+                sound.playClick();
+                this.roomCode = this.generate5LetterRoomCode();
+                const peerId = "IMPOSTER_ROOM_" + this.roomCode;
+
+                document.getElementById('networkStatusTag').textContent = "Connecting Host...";
+
+                try {
+                    if (this.peer) this.peer.destroy();
+                    this.peer = new Peer(peerId);
+
+                    this.peer.on('open', (id) => {
+                        this.isHost = true;
+                        document.getElementById('activeRoomCode').textContent = this.roomCode;
+                        document.getElementById('roomCodeDisplayContainer').classList.remove('hidden');
+                        document.getElementById('networkStatusTag').textContent = `Host Room: ${this.roomCode}`;
+                        document.getElementById('roomRoleBadge').textContent = "ROOM HOST";
+                        document.getElementById('roomCodeInstructions').textContent = "Share code for other iPads to join!";
+                        
+                        this.lobbyDevices = {};
+                        this.lobbyDevices[this.deviceId] = { label: "Device 1 (Host)", players: [...this.localPlayers] };
+                        this.updateRoleUI();
+                        this.syncLobbyToClients();
+                    });
+
+                    this.peer.on('connection', (conn) => {
+                        conn.on('open', () => {
+                            const devId = conn.peer;
+                            this.connections[devId] = conn;
+                        });
+
+                        conn.on('data', (data) => this.handleHostNetworkData(data, conn));
+
+                        conn.on('close', () => {
+                            delete this.connections[conn.peer];
+                            delete this.lobbyDevices[conn.peer];
+                            this.syncLobbyToClients();
+                        });
+                    });
+
+                    this.peer.on('error', (err) => {
+                        console.error("PeerJS Host Error:", err);
+                        // Fallback retry with new room code if collision
+                        if (err.type === 'unavailable-id') {
+                            this.createMultiDeviceRoom();
+                        } else {
+                            this.showWarningModal("Network Error", "Could not create PeerJS room. Retry again.");
+                            document.getElementById('networkStatusTag').textContent = "Error Connection";
+                        }
+                    });
+                } catch (e) {
+                    console.error("PeerJS init error:", e);
+                }
+            }
+
+            joinMultiDeviceRoom() {
+                sound.playClick();
+                const code = document.getElementById('joinRoomInput').value.trim().toUpperCase();
+                if (code.length < 4) {
+                    this.showWarningModal("Room Code Required", "Please enter a valid 5-letter Room Code!");
+                    return;
+                }
+
+                this.roomCode = code;
+                const targetPeerId = "IMPOSTER_ROOM_" + code;
+                document.getElementById('networkStatusTag').textContent = "Joining Room...";
+
+                try {
+                    if (this.peer) this.peer.destroy();
+                    this.peer = new Peer();
+
+                    this.peer.on('open', (id) => {
+                        this.isHost = false;
+                        this.hostConnection = this.peer.connect(targetPeerId);
+
+                        this.hostConnection.on('open', () => {
+                            document.getElementById('activeRoomCode').textContent = this.roomCode;
+                            document.getElementById('roomCodeDisplayContainer').classList.remove('hidden');
+                            document.getElementById('networkStatusTag').textContent = `Connected: ${this.roomCode}`;
+                            document.getElementById('roomRoleBadge').textContent = "CLIENT DEVICE";
+                            document.getElementById('roomCodeInstructions').textContent = "Connected to Host! Add local players below.";
+
+                            this.updateRoleUI();
+
+                            // Register local players with host
+                            this.sendToHost({
+                                type: 'REGISTER_DEVICE_PLAYERS',
+                                deviceId: this.deviceId,
+                                players: this.localPlayers
+                            });
+                        });
+
+                        this.hostConnection.on('data', (data) => this.handleClientNetworkData(data));
+
+                        this.hostConnection.on('close', () => {
+                            document.getElementById('networkStatusTag').textContent = "Disconnected";
+                            this.showWarningModal("Disconnected", "Host room closed or connection lost.");
+                        });
+                    });
+
+                    this.peer.on('error', (err) => {
+                        console.error("PeerJS Client Error:", err);
+                        this.showWarningModal("Room Not Found", `Could not find room with code "${code}". Verify code & try again.`);
+                        document.getElementById('networkStatusTag').textContent = "Join Failed";
+                    });
+                } catch (e) {
+                    console.error("Join PeerJS Error:", e);
+                }
+            }
+
+            sendToHost(data) {
+                if (this.hostConnection && this.hostConnection.open) {
+                    this.hostConnection.send(data);
+                }
+            }
+
+            broadcastToClients(data) {
+                if (this.isHost) {
+                    Object.values(this.connections).forEach(conn => {
+                        if (conn.open) conn.send(data);
+                    });
+                }
+            }
+
+            handleHostNetworkData(data, conn) {
+                if (data.type === 'REGISTER_DEVICE_PLAYERS') {
+                    const devCount = Object.keys(this.lobbyDevices).length + 1;
+                    this.lobbyDevices[data.deviceId] = {
+                        label: `Device ${devCount}`,
+                        players: data.players
+                    };
+                    this.syncLobbyToClients();
+                } else if (data.type === 'SUBMIT_CLIENT_ANON_VOTE') {
+                    this.anonVotes[data.voterGlobalIndex] = data.targetGlobalIndex;
+                    this.checkAndTallyMultiDeviceVotes();
+                } else if (data.type === 'SUBMIT_IMPOSTER_GUESS') {
+                    this.evaluateImposterGuess(data.guess);
+                }
+            }
+
+            handleClientNetworkData(data) {
+                if (data.type === 'LOBBY_STATE_SYNC') {
+                    this.lobbyDevices = data.lobbyDevices;
+                    this.renderMultiDeviceLobbyRoster();
+                } else if (data.type === 'GAME_START_SYNC') {
+                    this.fullRoomRoster = data.fullRoomRoster;
+                    this.currentSecretWord = data.secretWord;
+                    this.selectedCategoryKey = data.category;
+                    this.mode = data.mode;
+                    this.imposterGuessMode = data.imposterGuessMode;
+                    this.timerDuration = data.timerDuration;
+
+                    this.prepareLocalDeviceRolesAndStart();
+                } else if (data.type === 'TRANSITION_DISCUSSION') {
+                    this.startDiscussionPhase();
+                } else if (data.type === 'TRANSITION_VOTING') {
+                    this.startAnonymousVotingSequence();
+                } else if (data.type === 'PROMPT_IMPOSTER_GUESS') {
+                    this.promptImposterWordGuess(data.imposterName);
+                } else if (data.type === 'GAME_OVER_SYNC') {
+                    this.displayFinalResults(data.innocentsWon, data.impostersList, data.allPlayers, data.voteTally);
+                }
+            }
+
+            syncLobbyToClients() {
+                if (!this.isHost) return;
+                
+                // Update host local device entry
+                this.lobbyDevices[this.deviceId] = {
+                    label: "Device 1 (Host)",
+                    players: [...this.localPlayers]
+                };
+
+                this.renderMultiDeviceLobbyRoster();
+
+                this.broadcastToClients({
+                    type: 'LOBBY_STATE_SYNC',
+                    lobbyDevices: this.lobbyDevices
+                });
+            }
+
+            renderMultiDeviceLobbyRoster() {
+                const rosterContainer = document.getElementById('lobbyDevicesList');
+                const totalBadge = document.getElementById('totalRoomPlayerCount');
+                if (!rosterContainer) return;
+
+                rosterContainer.innerHTML = '';
+                let totalCount = 0;
+
+                Object.keys(this.lobbyDevices).forEach(devId => {
+                    const dev = this.lobbyDevices[devId];
+                    totalCount += dev.players.length;
+
+                    const card = document.createElement('div');
+                    card.className = "p-2 rounded-xl bg-black/40 border border-slate-800 flex justify-between items-center text-xs";
+                    card.innerHTML = `
+                        <span class="font-bold text-neon-cyan">${dev.label}:</span>
+                        <span class="text-slate-300 font-medium">${dev.players.length > 0 ? dev.players.join(', ') : 'No players added'}</span>
+                    `;
+                    rosterContainer.appendChild(card);
+                });
+
+                if (totalBadge) totalBadge.textContent = `${totalCount} Players Total`;
+                this.updateImposterSliderLimit();
+            }
+
+            /* --- UI VISIBILITY FOR HOST VS CLIENT --- */
+            updateRoleUI() {
+                const hostBtn = document.getElementById('hostStartButtonContainer');
+                const clientWaiting = document.getElementById('clientWaitingContainer');
+
+                if (this.playHardwareMode === 'multi' && !this.isHost) {
+                    hostBtn.classList.add('hidden');
+                    clientWaiting.classList.remove('hidden');
+                } else {
+                    hostBtn.classList.remove('hidden');
+                    clientWaiting.classList.add('hidden');
+                }
+            }
+
+            /* --- CATEGORY & WORD BANK MANAGEMENT --- */
+            populateCategoryDropdown() {
+                const select = document.getElementById('categorySelect');
+                const modalSelect = document.getElementById('modalCategorySelect');
+                if (!select || !modalSelect) return;
+
+                select.innerHTML = '';
+                modalSelect.innerHTML = '';
+
+                Object.keys(this.categories).forEach(cat => {
+                    const count = this.categories[cat].length;
+                    
+                    const opt1 = document.createElement('option');
+                    opt1.value = cat;
+                    opt1.textContent = `${cat} (${count} words)`;
+                    select.appendChild(opt1);
+
+                    const opt2 = document.createElement('option');
+                    opt2.value = cat;
+                    opt2.textContent = `${cat} (${count} words)`;
+                    modalSelect.appendChild(opt2);
+                });
+
+                select.value = this.selectedCategoryKey;
+                modalSelect.value = this.selectedCategoryKey;
+            }
+
+            openCategoryModal() {
+                sound.playClick();
+                this.populateCategoryDropdown();
+                this.loadModalCategoryWords();
+                document.getElementById('categoryModal').classList.remove('hidden');
+            }
+
+            closeCategoryModal() {
+                sound.playClick();
+                document.getElementById('categoryModal').classList.add('hidden');
+                this.populateCategoryDropdown();
+            }
+
+            loadModalCategoryWords() {
+                const cat = document.getElementById('modalCategorySelect').value;
+                const words = this.categories[cat] || [];
+                document.getElementById('modalWordsTextarea').value = words.join(', ');
+                document.getElementById('modalWordCount').textContent = words.length;
+            }
+
+            saveModalWords() {
+                sound.playClick();
+                const cat = document.getElementById('modalCategorySelect').value;
+                const text = document.getElementById('modalWordsTextarea').value;
+                const wordsArray = text.split(',')
+                    .map(w => w.trim())
+                    .filter(w => w.length > 0);
+
+                if (wordsArray.length < 3) {
+                    this.showWarningModal("Word Bank Notice", "A category needs at least 3 words!");
+                    return;
+                }
+
+                this.categories[cat] = Array.from(new Set(wordsArray));
+                localStorage.setItem('imposter_categories', JSON.stringify(this.categories));
+                this.populateCategoryDropdown();
+                this.loadModalCategoryWords();
+            }
+
+            createNewCategory() {
+                sound.playClick();
+                const nameInput = document.getElementById('newCategoryName');
+                const wordsInput = document.getElementById('newCategoryWords');
+
+                const name = nameInput.value.trim();
+                const wordsArray = wordsInput.value.split(',')
+                    .map(w => w.trim())
+                    .filter(w => w.length > 0);
+
+                if (!name) {
+                    this.showWarningModal("Category Name Missing", "Please enter a category name!");
+                    return;
+                }
+                if (wordsArray.length < 3) {
+                    this.showWarningModal("Not Enough Words", "Please enter at least 3 words for this category!");
+                    return;
+                }
+
+                this.categories[name] = Array.from(new Set(wordsArray));
+                localStorage.setItem('imposter_categories', JSON.stringify(this.categories));
+                this.selectedCategoryKey = name;
+
+                nameInput.value = '';
+                wordsInput.value = '';
+
+                this.populateCategoryDropdown();
+                this.loadModalCategoryWords();
+            }
+
+            resetCategoryToDefault() {
+                this.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+                localStorage.removeItem('imposter_categories');
+                this.populateCategoryDropdown();
+                this.loadModalCategoryWords();
+            }
+
+            /* --- LOCAL PLAYER CHIPS --- */
+            renderPlayerChips() {
+                const list = document.getElementById('playerList');
+                const badge = document.getElementById('playerCountBadge');
+                if (!list) return;
+
+                list.innerHTML = '';
+                badge.textContent = this.localPlayers.length;
+
+                this.localPlayers.forEach((p, idx) => {
+                    const chip = document.createElement('div');
+                    chip.className = "flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 border border-slate-700 text-xs font-bold text-slate-200 animate-fade-in";
+                    chip.innerHTML = `
+                        <span>${p}</span>
+                        <button onclick="game.removeLocalPlayer(${idx})" class="text-slate-400 hover:text-rose-400 ml-1">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    `;
+                    list.appendChild(chip);
+                });
+
+                if (this.playHardwareMode === 'multi') {
+                    if (this.isHost) {
+                        this.syncLobbyToClients();
+                    } else {
+                        this.sendToHost({
+                            type: 'REGISTER_DEVICE_PLAYERS',
+                            deviceId: this.deviceId,
+                            players: this.localPlayers
+                        });
+                    }
+                }
+                this.updateImposterSliderLimit();
+            }
+
+            addLocalPlayer() {
+                sound.playClick();
+                const input = document.getElementById('playerNameInput');
+                const name = input.value.trim();
+                if (name) {
+                    this.localPlayers.push(name);
+                    input.value = '';
+                    this.renderPlayerChips();
+                }
+            }
+
+            removeLocalPlayer(index) {
+                sound.playClick();
+                this.localPlayers.splice(index, 1);
+                this.renderPlayerChips();
+            }
+
+            quickAddPlayers() {
+                sound.playClick();
+                this.localPlayers = ["Alex", "Jordan", "Taylor", "Sam", "Morgan", "Riley"];
+                this.renderPlayerChips();
+            }
+
+            adjustImposters(delta) {
+                sound.playClick();
+                const total = this.getCombinedRoomRosterCount();
+                const max = Math.max(1, total - 1);
+                this.imposterCount = Math.min(max, Math.max(1, this.imposterCount + delta));
+                document.getElementById('imposterSlider').value = this.imposterCount;
+                document.getElementById('imposterCountText').textContent = this.imposterCount;
+            }
+
+            updateImposterSlider(val) {
+                this.imposterCount = parseInt(val);
+                document.getElementById('imposterCountText').textContent = this.imposterCount;
+            }
+
+            getCombinedRoomRosterCount() {
+                if (this.playHardwareMode === 'multi') {
+                    let sum = 0;
+                    Object.values(this.lobbyDevices).forEach(dev => sum += dev.players.length);
+                    return sum;
+                }
+                return this.localPlayers.length;
+            }
+
+            updateImposterSliderLimit() {
+                const slider = document.getElementById('imposterSlider');
+                if (!slider) return;
+                const total = this.getCombinedRoomRosterCount();
+                const max = Math.max(1, total - 1);
+                slider.max = max;
+                if (this.imposterCount > max) {
+                    this.imposterCount = max;
+                    slider.value = max;
+                    document.getElementById('imposterCountText').textContent = max;
+                }
+            }
+
+            setMode(mode) {
+                sound.playClick();
+                this.mode = mode;
+                ['Classic', 'Hint', 'Chaos'].forEach(m => {
+                    const btn = document.getElementById(`modeBtn${m}`);
+                    if (btn) {
+                        btn.className = m.toLowerCase() === mode ?
+                            "mode-btn p-2.5 rounded-xl border border-neon-cyan bg-neon-cyan/10 text-xs font-bold text-white text-center transition" :
+                            "mode-btn p-2.5 rounded-xl border border-slate-700 bg-black/30 text-xs font-bold text-slate-400 text-center transition hover:border-slate-500";
+                    }
+                });
+            }
+
+            toggleImposterGuessMode(enabled) {
+                sound.playClick();
+                this.imposterGuessMode = enabled;
+            }
+
+            updateTimerSetting(val) {
+                sound.playClick();
+                this.timerDuration = parseInt(val);
+                document.getElementById('timerText').textContent = val === '0' ? 'Off' : `${val / 60}m`;
+            }
+
+            /* --- START GAME EXECUTION (HOST ONLY IN MULTI) --- */
+            startGame() {
+                sound.playClick();
+
+                // Build flat combined roster across all devices
+                if (this.playHardwareMode === 'multi') {
+                    this.fullRoomRoster = [];
+                    let gIdx = 0;
+                    Object.keys(this.lobbyDevices).forEach(devId => {
+                        const dev = this.lobbyDevices[devId];
+                        dev.players.forEach(pName => {
+                            this.fullRoomRoster.push({
+                                globalIndex: gIdx++,
+                                name: pName,
+                                deviceId: devId,
+                                isImposter: false,
+                                word: ""
+                            });
+                        });
+                    });
+                } else {
+                    this.fullRoomRoster = this.localPlayers.map((pName, idx) => ({
+                        globalIndex: idx,
+                        name: pName,
+                        deviceId: this.deviceId,
+                        isImposter: false,
+                        word: ""
+                    }));
+                }
+
+                // REQUIREMENT 1: MINIMUM 3 PLAYERS CHECK
+                if (this.fullRoomRoster.length < 3) {
+                    this.showWarningModal(
+                        "Not Enough Players",
+                        "You need a minimum of 3 total players to start the game! Add player names or connect additional devices."
+                    );
+                    return;
+                }
+
+                if (this.imposterCount >= this.fullRoomRoster.length) {
+                    this.showWarningModal(
+                        "Too Many Imposters",
+                        `With ${this.fullRoomRoster.length} players, you can have at most ${this.fullRoomRoster.length - 1} imposter(s).`
+                    );
+                    return;
+                }
+
+                this.selectedCategoryKey = document.getElementById('categorySelect').value;
+                const wordPool = this.categories[this.selectedCategoryKey] || [];
+
+                if (wordPool.length < 2) {
+                    this.showWarningModal("Not Enough Words", "This category needs more words to play!");
+                    return;
+                }
+
+                // Pick main secret word
+                const mainIdx = Math.floor(Math.random() * wordPool.length);
+                this.currentSecretWord = wordPool[mainIdx];
+
+                // Chaos variant word
+                let varIdx = Math.floor(Math.random() * wordPool.length);
+                while (varIdx === mainIdx && wordPool.length > 1) {
+                    varIdx = Math.floor(Math.random() * wordPool.length);
+                }
+                this.chaosVariantWord = wordPool[varIdx];
+
+                // Assign Imposters randomly
+                this.imposterIndices = [];
+                while (this.imposterIndices.length < this.imposterCount) {
+                    const rand = Math.floor(Math.random() * this.fullRoomRoster.length);
+                    if (!this.imposterIndices.includes(rand)) {
+                        this.imposterIndices.push(rand);
+                    }
+                }
+
+                // Assign roles in full roster
+                this.fullRoomRoster.forEach(p => {
+                    const isImp = this.imposterIndices.includes(p.globalIndex);
+                    p.isImposter = isImp;
+                    if (!isImp) {
+                        p.word = this.currentSecretWord;
+                    } else {
+                        p.word = (this.mode === 'chaos') ? this.chaosVariantWord : "";
+                    }
+                });
+
+                this.eliminatedPlayers.clear();
+                this.anonVotes = {};
+
+                // In Multi Mode Host broadcasts state to clients
+                if (this.playHardwareMode === 'multi' && this.isHost) {
+                    this.broadcastToClients({
+                        type: 'GAME_START_SYNC',
+                        fullRoomRoster: this.fullRoomRoster,
+                        secretWord: this.currentSecretWord,
+                        category: this.selectedCategoryKey,
+                        mode: this.mode,
+                        imposterGuessMode: this.imposterGuessMode,
+                        timerDuration: this.timerDuration
+                    });
+                }
+
+                this.prepareLocalDeviceRolesAndStart();
+            }
+
+            prepareLocalDeviceRolesAndStart() {
+                // Filter players assigned to THIS specific device
+                this.myAssignedLocalRoleList = this.fullRoomRoster.filter(p => p.deviceId === this.deviceId);
+                this.currentPassIndex = 0;
+
+                if (this.myAssignedLocalRoleList.length > 0) {
+                    this.showPassDeviceCoverScreen();
+                } else {
+                    // No local players on this device (observer mode)
+                    this.startDiscussionPhase();
+                }
+            }
+
+            showPassDeviceCoverScreen() {
+                document.getElementById('roleDisplayContent').innerHTML = '';
+                const currentLocalPlayer = this.myAssignedLocalRoleList[this.currentPassIndex];
+
+                document.getElementById('passTargetPlayerName').textContent = currentLocalPlayer.name;
+                document.getElementById('passCoverIndex').textContent = this.currentPassIndex + 1;
+                document.getElementById('passCoverTotal').textContent = this.myAssignedLocalRoleList.length;
+
+                this.showScreen('screenPassCover');
+            }
+
+            revealRoleForCurrentPlayer() {
+                sound.playFlip();
+
+                const playerObj = this.myAssignedLocalRoleList[this.currentPassIndex];
+                const roleIcon = document.getElementById('roleDisplayIcon');
+                const roleContent = document.getElementById('roleDisplayContent');
+
+                if (playerObj.isImposter) {
+                    roleIcon.className = "w-20 h-20 mx-auto rounded-full bg-neon-magenta/20 border border-neon-magenta/40 flex items-center justify-center text-neon-magenta text-3xl shadow-neon-magenta";
+                    roleIcon.innerHTML = `<i class="fa-solid fa-user-ninja"></i>`;
+
+                    let subText = "You do NOT know the secret word! Blend in and don't get caught.";
+                    if (this.mode === 'hint') {
+                        subText = `You are the Imposter! Category hint: <span class="text-neon-cyan font-bold">${this.selectedCategoryKey}</span>`;
+                    } else if (this.mode === 'chaos') {
+                        subText = `Chaos Mode! Your secret variant word is: <span class="text-neon-yellow font-black text-2xl block my-2">${this.chaosVariantWord}</span>`;
+                    }
+
+                    roleContent.innerHTML = `
+                        <span class="px-3 py-1 rounded-full bg-neon-magenta/20 border border-neon-magenta/40 text-neon-magenta font-black text-xs uppercase tracking-widest">
+                            YOU ARE THE IMPOSTER
+                        </span>
+                        <p class="text-sm text-slate-200 mt-3 font-medium">${subText}</p>
+                    `;
+                } else {
+                    roleIcon.className = "w-20 h-20 mx-auto rounded-full bg-neon-cyan/20 border border-neon-cyan/40 flex items-center justify-center text-neon-cyan text-3xl shadow-neon-cyan";
+                    roleIcon.innerHTML = `<i class="fa-solid fa-shield-halved"></i>`;
+
+                    roleContent.innerHTML = `
+                        <span class="px-3 py-1 rounded-full bg-neon-cyan/20 border border-neon-cyan/40 text-neon-cyan font-black text-xs uppercase tracking-widest">
+                            YOU ARE INNOCENT
+                        </span>
+                        <div class="my-3">
+                            <span class="text-xs uppercase text-slate-400 block font-bold">Secret Word:</span>
+                            <span class="text-3xl sm:text-4xl font-black text-neon-yellow tracking-wider">${this.currentSecretWord}</span>
+                        </div>
+                        <span class="text-xs text-slate-400">Category: ${this.selectedCategoryKey}</span>
+                    `;
+                }
+
+                // Update Hide & Continue button text
+                const hideBtnText = document.getElementById('hideAndPassBtnText');
+                if (this.currentPassIndex < this.myAssignedLocalRoleList.length - 1) {
+                    hideBtnText.textContent = "Hide & Pass to Next Player";
+                } else {
+                    hideBtnText.textContent = "Hide & Start Discussion";
+                }
+
+                this.showScreen('screenRoleDisplay');
+            }
+
+            hideAndPassToNext() {
+                sound.playClick();
+                document.getElementById('roleDisplayContent').innerHTML = '';
+
+                if (this.currentPassIndex < this.myAssignedLocalRoleList.length - 1) {
+                    this.currentPassIndex++;
+                    this.showPassDeviceCoverScreen();
+                } else {
+                    if (this.playHardwareMode === 'multi' && this.isHost) {
+                        this.broadcastToClients({ type: 'TRANSITION_DISCUSSION' });
+                    }
+                    this.startDiscussionPhase();
+                }
+            }
+
+            /* --- AUTOMATIC GENERAL DISCUSSION & TIMER --- */
+            startDiscussionPhase() {
+                this.showScreen('screenDiscussion');
+                this.generateBroadClueIdea();
+
+                if (this.timerDuration > 0) {
+                    this.timerSecondsLeft = this.timerDuration;
+                    this.isTimerPaused = false;
+                    this.runTimer();
+                } else {
+                    document.getElementById('timerDisplay').textContent = "--:--";
+                }
+            }
+
+            runTimer() {
+                clearInterval(this.timerInterval);
+                this.updateTimerDisplay();
+
+                this.timerInterval = setInterval(() => {
+                    if (this.isTimerPaused) return;
+
+                    this.timerSecondsLeft--;
+                    this.updateTimerDisplay();
+
+                    if (this.timerSecondsLeft <= 5 && this.timerSecondsLeft > 0) {
+                        sound.playTimerTick();
+                    }
+
+                    if (this.timerSecondsLeft <= 0) {
+                        clearInterval(this.timerInterval);
+                        sound.playAlarm();
+                        // Automatically proceed to voting phase when timer expires
+                        this.proceedToVoting();
+                    }
+                }, 1000);
+            }
+
+            updateTimerDisplay() {
+                if (this.timerDuration === 0) return;
+
+                const mins = Math.floor(this.timerSecondsLeft / 60);
+                const secs = this.timerSecondsLeft % 60;
+                document.getElementById('timerDisplay').textContent = 
+                    `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+                const ring = document.getElementById('timerRing');
+                const totalDash = 263.89;
+                const pct = Math.max(0, this.timerSecondsLeft / this.timerDuration);
+                ring.style.strokeDashoffset = totalDash * (1 - pct);
+            }
+
+            toggleTimerPause() {
+                sound.playClick();
+                this.isTimerPaused = !this.isTimerPaused;
+                document.getElementById('pauseTimerBtn').innerHTML = this.isTimerPaused ?
+                    '<i class="fa-solid fa-play"></i> Resume' : '<i class="fa-solid fa-pause"></i> Pause';
+            }
+
+            addTimerSeconds(sec) {
+                sound.playClick();
+                this.timerSecondsLeft += sec;
+                this.updateTimerDisplay();
+            }
+
+            generateBroadClueIdea() {
+                sound.playClick();
+                const rand = Math.floor(Math.random() * BROAD_CLUE_IDEAS.length);
+                document.getElementById('broadClueIdeaText').textContent = `"${BROAD_CLUE_IDEAS[rand]}"`;
+            }
+
+            /* --- PROCEED TO ANONYMOUS VOTING --- */
+            proceedToVoting() {
+                sound.playClick();
+                clearInterval(this.timerInterval);
+
+                if (this.playHardwareMode === 'multi' && this.isHost) {
+                    this.broadcastToClients({ type: 'TRANSITION_VOTING' });
+                }
+
+                this.startAnonymousVotingSequence();
+            }
+
+            /* --- ANONYMOUS PASS & VOTE SEQUENCE --- */
+            startAnonymousVotingSequence() {
+                this.currentAnonVoterIndex = 0;
+                this.showAnonVoterPassCover();
+            }
+
+            showAnonVoterPassCover() {
+                const myVoter = this.myAssignedLocalRoleList[this.currentAnonVoterIndex];
+                document.getElementById('anonVoterName').textContent = myVoter.name;
+                document.getElementById('anonVoterIndex').textContent = this.currentAnonVoterIndex + 1;
+                document.getElementById('anonVoterTotal').textContent = this.myAssignedLocalRoleList.length;
+
+                this.showScreen('screenAnonVotePassCover');
+            }
+
+            startAnonVoteForCurrentPlayer() {
+                sound.playClick();
+                this.selectedBallotTarget = null;
+                const myVoter = this.myAssignedLocalRoleList[this.currentAnonVoterIndex];
+
+                document.getElementById('ballotVoterBadge').textContent = `Voter: ${myVoter.name}`;
+                const grid = document.getElementById('anonBallotGrid');
+                grid.innerHTML = '';
+
+                // List all active players in room except voter
+                this.fullRoomRoster.forEach((suspect) => {
+                    if (suspect.globalIndex === myVoter.globalIndex) return;
+                    if (this.eliminatedPlayers.has(suspect.globalIndex)) return;
+
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = "ballot-option p-4 rounded-xl glass-panel border border-slate-700 text-left flex justify-between items-center hover:border-neon-green transition";
+                    btn.onclick = () => this.selectBallotTarget(suspect.globalIndex, btn);
+
+                    btn.innerHTML = `
+                        <span class="font-bold text-white text-base">${suspect.name}</span>
+                        <i class="fa-regular fa-circle text-slate-500 text-lg check-icon"></i>
+                    `;
+                    grid.appendChild(btn);
+                });
+
+                const confirmBtn = document.getElementById('confirmVoteBtn');
+                confirmBtn.disabled = true;
+                confirmBtn.className = "w-full py-4 rounded-xl bg-slate-800 text-slate-500 font-black text-base uppercase tracking-wider transition border border-slate-700 cursor-not-allowed";
+
+                this.showScreen('screenAnonBallot');
+            }
+
+            selectBallotTarget(targetGlobalIdx, btnEl) {
+                sound.playClick();
+                this.selectedBallotTarget = targetGlobalIdx;
+
+                document.querySelectorAll('.ballot-option').forEach(b => {
+                    b.className = "ballot-option p-4 rounded-xl glass-panel border border-slate-700 text-left flex justify-between items-center hover:border-neon-green transition";
+                    const icon = b.querySelector('.check-icon');
+                    if (icon) icon.className = "fa-regular fa-circle text-slate-500 text-lg check-icon";
+                });
+
+                btnEl.className = "ballot-option p-4 rounded-xl bg-neon-green/20 border-2 border-neon-green text-left flex justify-between items-center transition shadow-neon-green/20";
+                const check = btnEl.querySelector('.check-icon');
+                if (check) check.className = "fa-solid fa-circle-check text-neon-green text-lg check-icon";
+
+                const confirmBtn = document.getElementById('confirmVoteBtn');
+                confirmBtn.disabled = false;
+                confirmBtn.className = "w-full py-4 rounded-xl bg-neon-green text-slate-950 font-black text-base uppercase tracking-wider hover:bg-emerald-300 transition shadow-lg cursor-pointer";
+            }
+
+            confirmAnonVote() {
+                if (this.selectedBallotTarget === null) return;
+                sound.playClick();
+
+                const myVoter = this.myAssignedLocalRoleList[this.currentAnonVoterIndex];
+
+                if (this.playHardwareMode === 'multi' && !this.isHost) {
+                    this.sendToHost({
+                        type: 'SUBMIT_CLIENT_ANON_VOTE',
+                        voterGlobalIndex: myVoter.globalIndex,
+                        targetGlobalIndex: this.selectedBallotTarget
+                    });
+                } else {
+                    this.anonVotes[myVoter.globalIndex] = this.selectedBallotTarget;
+                }
+
+                if (this.currentAnonVoterIndex < this.myAssignedLocalRoleList.length - 1) {
+                    this.currentAnonVoterIndex++;
+                    this.showAnonVoterPassCover();
+                } else {
+                    if (this.isHost) {
+                        this.checkAndTallyMultiDeviceVotes();
+                    } else {
+                        // Client device waits for host to tally and announce results
+                        this.showScreen('screenAnonVotePassCover');
+                        document.getElementById('anonVoterName').textContent = "Waiting for other devices...";
+                    }
+                }
+            }
+
+            /* --- MULTIPLE IMPOSTER VOTING & TOP-2 ELIMINATION TALLY --- */
+            checkAndTallyMultiDeviceVotes() {
+                if (!this.isHost) return;
+
+                const counts = {};
+                this.fullRoomRoster.forEach(p => counts[p.globalIndex] = 0);
+
+                Object.values(this.anonVotes).forEach(targetIdx => {
+                    counts[targetIdx] = (counts[targetIdx] || 0) + 1;
+                });
+
+                // Rank players by vote count and tiebreaker rule
+                // TIE BREAKER: If tie between Innocent and Imposter, eliminate the Imposter!
+                const ranked = Object.keys(counts).map(i => parseInt(i)).sort((a, b) => {
+                    if (counts[b] !== counts[a]) {
+                        return counts[b] - counts[a];
+                    }
+                    const aIsImp = this.imposterIndices.includes(a) ? 1 : 0;
+                    const bIsImp = this.imposterIndices.includes(b) ? 1 : 0;
+                    return bIsImp - aIsImp; // Prioritize Imposter in ties!
+                });
+
+                // Top Elimination Count: If 2+ imposters, eliminate top 2 highest vote receivers
+                const numToEliminate = (this.imposterCount > 1) ? 2 : 1;
+                const toEliminate = ranked.slice(0, numToEliminate);
+
+                let caughtImposterToGuess = null;
+
+                toEliminate.forEach(idx => {
+                    this.eliminatedPlayers.add(idx);
+                    if (this.imposterIndices.includes(idx)) {
+                        caughtImposterToGuess = idx;
+                    }
+                });
+
+                // Imposter "Steal the Win" Word Guess Check
+                if (this.imposterGuessMode && caughtImposterToGuess !== null) {
+                    const imposterName = this.fullRoomRoster[caughtImposterToGuess].name;
+                    if (this.playHardwareMode === 'multi') {
+                        this.broadcastToClients({
+                            type: 'PROMPT_IMPOSTER_GUESS',
+                            imposterName: imposterName
+                        });
+                    }
+                    this.promptImposterWordGuess(imposterName);
+                    return;
+                }
+
+                this.evaluateGameEndCondition(counts);
+            }
+
+            /* --- IMPOSTER WORD GUESS "STEAL THE WIN" MODE --- */
+            promptImposterWordGuess(imposterName) {
+                sound.playAlarm();
+                document.getElementById('guessModalPlayerTag').textContent = `Caught Imposter: ${imposterName}`;
+                document.getElementById('imposterGuessInput').value = '';
+                document.getElementById('imposterGuessModal').classList.remove('hidden');
+            }
+
+            submitImposterGuess() {
+                sound.playClick();
+                const guess = document.getElementById('imposterGuessInput').value.trim();
+                document.getElementById('imposterGuessModal').classList.add('hidden');
+
+                if (this.playHardwareMode === 'multi' && !this.isHost) {
+                    this.sendToHost({
+                        type: 'SUBMIT_IMPOSTER_GUESS',
+                        guess: guess
+                    });
+                } else {
+                    this.evaluateImposterGuess(guess);
+                }
+            }
+
+            evaluateImposterGuess(guessText) {
+                const targetWord = this.currentSecretWord.trim().toLowerCase();
+                const guessed = guessText.trim().toLowerCase();
+
+                if (guessed && targetWord === guessed) {
+                    alert(`WOW! Imposter guessed the secret word "${this.currentSecretWord}" correctly!\n\nIMPOSTERS STEAL THE WIN!`);
+                    this.evaluateGameEndCondition(null, false); // Impostors win!
+                } else {
+                    alert(`Incorrect guess ("${guessText}")! The secret word remains safe.\n\nInnocents survive!`);
+                    this.evaluateGameEndCondition();
+                }
+            }
+
+            evaluateGameEndCondition(counts = null, defaultWinEval = true) {
+                if (!this.isHost) return;
+
+                const remainingImposters = this.imposterIndices.filter(i => !this.eliminatedPlayers.has(i)).length;
+                const totalInnocents = this.fullRoomRoster.length - this.imposterIndices.length;
+                const remainingInnocents = totalInnocents - Array.from(this.eliminatedPlayers).filter(i => !this.imposterIndices.includes(i)).length;
+
+                let innocentsWon = true;
+
+                if (!defaultWinEval) {
+                    innocentsWon = false;
+                } else if (remainingImposters === 0) {
+                    innocentsWon = true;
+                } else if (remainingImposters >= remainingInnocents) {
+                    innocentsWon = false;
+                } else {
+                    // Game continues to next round
+                    if (this.playHardwareMode === 'multi') {
+                        this.broadcastToClients({ type: 'TRANSITION_DISCUSSION' });
+                    }
+                    this.startDiscussionPhase();
+                    return;
+                }
+
+                // Game Over - Sync to all devices
+                const impostersList = this.imposterIndices.map(i => this.fullRoomRoster[i]);
+                const allPlayers = this.fullRoomRoster.map(p => ({
+                    name: p.name,
+                    isImposter: p.isImposter,
+                    eliminated: this.eliminatedPlayers.has(p.globalIndex)
+                }));
+
+                const voteTally = counts ? Object.keys(counts).map(i => ({
+                    name: this.fullRoomRoster[i].name,
+                    votes: counts[i]
+                })) : [];
+
+                if (this.playHardwareMode === 'multi') {
+                    this.broadcastToClients({
+                        type: 'GAME_OVER_SYNC',
+                        innocentsWon: innocentsWon,
+                        impostersList: impostersList,
+                        allPlayers: allPlayers,
+                        voteTally: voteTally
+                    });
+                }
+
+                this.displayFinalResults(innocentsWon, impostersList, allPlayers, voteTally);
+            }
+
+            displayFinalResults(innocentsWon, impostersList, allPlayers, voteTally) {
+                sound.playVictory();
+                clearInterval(this.timerInterval);
+                this.showScreen('screenResults');
+
+                const badge = document.getElementById('resultBadge');
+                const title = document.getElementById('resultTitle');
+
+                if (innocentsWon) {
+                    badge.className = "inline-block px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/40";
+                    badge.textContent = "INNOCENTS WIN!";
+                    title.textContent = "The Imposter(s) Were Caught!";
+                    
+                    if (window.confetti) {
+                        confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+                    }
+                } else {
+                    badge.className = "inline-block px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest bg-neon-magenta/20 text-neon-magenta border border-neon-magenta/40";
+                    badge.textContent = "IMPOSTERS WIN!";
+                    title.textContent = "The Imposter(s) Took Over!";
+                }
+
+                document.getElementById('secretWordResult').textContent = this.currentSecretWord;
+                document.getElementById('categoryResult').textContent = `Category: ${this.selectedCategoryKey}`;
+
+                // Imposters list
+                const impList = document.getElementById('impostersListResult');
+                impList.innerHTML = '';
+                impostersList.forEach(imp => {
+                    const row = document.createElement('div');
+                    row.className = "p-2.5 rounded-xl bg-neon-magenta/10 border border-neon-magenta/30 flex justify-between items-center text-sm font-bold text-white";
+                    row.innerHTML = `
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid fa-user-ninja text-neon-magenta"></i>
+                            ${imp.name}
+                        </span>
+                        <span class="text-xs text-neon-magenta uppercase tracking-wider">Imposter</span>
+                    `;
+                    impList.appendChild(row);
+                });
+
+                // Vote Tally Breakdown
+                if (voteTally && voteTally.length > 0) {
+                    const tallyCard = document.getElementById('voteTallyCard');
+                    const tallyList = document.getElementById('voteTallyList');
+                    tallyCard.classList.remove('hidden');
+                    tallyList.innerHTML = '';
+
+                    voteTally.forEach(v => {
+                        const row = document.createElement('div');
+                        row.className = "p-2.5 rounded-xl bg-black/40 border border-slate-700 flex justify-between items-center text-xs font-bold text-slate-200";
+                        row.innerHTML = `
+                            <span>${v.name}</span>
+                            <span class="text-neon-green">${v.votes} Vote(s)</span>
+                        `;
+                        tallyList.appendChild(row);
+                    });
+                }
+
+                // All players breakdown
+                const allList = document.getElementById('allPlayersResult');
+                allList.innerHTML = '';
+                allPlayers.forEach(p => {
+                    const row = document.createElement('div');
+                    row.className = `p-2.5 rounded-xl glass-card flex justify-between items-center text-xs font-medium border ${
+                        p.isImposter ? 'border-neon-magenta/40 text-neon-magenta' : 'border-slate-800 text-slate-300'
+                    }`;
+
+                    row.innerHTML = `
+                        <span>${p.name} ${p.eliminated ? '(Eliminated)' : ''}</span>
+                        <span class="font-bold uppercase">${p.isImposter ? 'Imposter' : 'Innocent'}</span>
+                    `;
+                    allList.appendChild(row);
+                });
+
+                // Play Again button visibility
+                const playAgainBtn = document.getElementById('playAgainBtn');
+                if (this.playHardwareMode === 'multi' && !this.isHost) {
+                    playAgainBtn.classList.add('hidden');
+                } else {
+                    playAgainBtn.classList.remove('hidden');
+                }
+            }
+
+            /* --- SCREEN NAVIGATION --- */
+            showScreen(id) {
+                ['screenSetup', 'screenPassCover', 'screenRoleDisplay', 'screenDiscussion', 'screenAnonVotePassCover', 'screenAnonBallot', 'screenResults'].forEach(s => {
+                    const el = document.getElementById(s);
+                    if (el) el.classList.add('hidden');
+                });
+                const active = document.getElementById(id);
+                if (active) active.classList.remove('hidden');
+            }
+
+            navHome() {
+                sound.playClick();
+                clearInterval(this.timerInterval);
+                this.showScreen('screenSetup');
+                this.updateRoleUI();
+            }
+        }
+
+        // Global Game Initialization
+        let game;
+        window.onload = () => {
+            game = new ImposterGame();
+        };
+    </script>
+</body>
+</html>
